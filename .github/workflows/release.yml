@@ -1,4 +1,4 @@
-name: Build and Publish the Docker Image
+name: Release the server - builds binaries, docker images and creates a release
 
 on:
   push:

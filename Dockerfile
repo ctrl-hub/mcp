@@ -14,7 +14,7 @@ RUN go mod download
 COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-w -s -extldflags '-static' -X main.version=${VERSION} \
+    -ldflags="-w -s -extldflags '-static' -X main.version=${VERSION}" \
     -a -installsuffix cgo \
     -o bin/ctrl-hub-mcp-server \
     cmd/server/main.go

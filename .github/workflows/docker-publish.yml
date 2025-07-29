@@ -67,20 +67,22 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
           # Create tags array based on semantic version
-          TAGS=""
-          TAGS="$TAGS${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$VERSION"
-          TAGS="$TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          REGISTRY="${{ env.REGISTRY }}"
+          IMAGE_NAME="${{ env.IMAGE_NAME }}"
+
+          TAGS="${REGISTRY}/${IMAGE_NAME}:${VERSION}"
+          TAGS="${TAGS},${REGISTRY}/${IMAGE_NAME}:latest"
 
           # Add major.minor tag if version has at least major.minor
           if [[ $VERSION =~ ^([0-9]+)\.([0-9]+) ]]; then
             MAJOR_MINOR="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
-            TAGS="$TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$MAJOR_MINOR"
+            TAGS="${TAGS},${REGISTRY}/${IMAGE_NAME}:${MAJOR_MINOR}"
           fi
 
           # Add major tag
           if [[ $VERSION =~ ^([0-9]+) ]]; then
             MAJOR="${BASH_REMATCH[1]}"
-            TAGS="$TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$MAJOR"
+            TAGS="${TAGS},${REGISTRY}/${IMAGE_NAME}:${MAJOR}"
           fi
 
           echo "tags=$TAGS" >> $GITHUB_OUTPUT

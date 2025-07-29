@@ -59,19 +59,31 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
+      - name: Extract version from tag
+        id: version
+        run: |
+          # Extract version from tag (remove refs/tags/)
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Create tags array based on semantic version
+          TAGS=""
+          TAGS="$TAGS${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$VERSION"
+          TAGS="$TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+
+          # Add major.minor tag if version has at least major.minor
+          if [[ $VERSION =~ ^([0-9]+)\.([0-9]+) ]]; then
+            MAJOR_MINOR="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+            TAGS="$TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$MAJOR_MINOR"
+          fi
+
+          # Add major tag
+          if [[ $VERSION =~ ^([0-9]+) ]]; then
+            MAJOR="${BASH_REMATCH[1]}"
+            TAGS="$TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$MAJOR"
+          fi
+
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -79,16 +91,8 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.version.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
-
-      - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v1
-        with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
-          subject-digest: ${{ steps.build.outputs.digest }}
-          push-to-registry: true
+            VERSION=${{ steps.version.outputs.version }}
